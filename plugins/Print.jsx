@@ -86,7 +86,7 @@ class Print extends React.Component {
         gridInitiallyEnabled: false,
         side: 'right',
         sortPrintlayouts: 'desc',
-        defaultPrintlayout: 'A4 - Hochformat'
+        defaultPrintlayout: ''
     };
     state = {
         layout: null,
