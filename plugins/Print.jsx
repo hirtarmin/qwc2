@@ -68,7 +68,13 @@ class Print extends React.Component {
         scaleFactor: PropTypes.number,
         /** The side of the application on which to display the sidebar. */
         side: PropTypes.string,
-        theme: PropTypes.object
+        theme: PropTypes.object,
+        /** All layouts with this prefix will not be displayed in the print layoutlist */
+        hidePrintlayoutPrefix: PropTypes.string,
+        /** Alphabetical order for print layouts: asc or desc */
+        sortPrintlayouts: PropTypes.string,
+        /** The default layout to display first */
+        defaultPrintlayout: PropTypes.string
     };
     static defaultProps = {
         printExternalLayers: true,
@@ -78,7 +84,9 @@ class Print extends React.Component {
         defaultScaleFactor: 0.5,
         displayRotation: true,
         gridInitiallyEnabled: false,
-        side: 'right'
+        side: 'right',
+        sortPrintlayouts: 'desc',
+        defaultPrintlayout: ''
     };
     state = {
         layout: null,
@@ -107,10 +115,20 @@ class Print extends React.Component {
     componentDidUpdate(prevProps, prevState) {
         if (prevProps.theme !== this.props.theme) {
             if (this.props.theme && !isEmpty(this.props.theme.print)) {
-                const layouts = this.props.theme.print.filter(l => l.map).sort((a, b) => {
-                    return a.name.localeCompare(b.name, undefined, {numeric: true});
-                });
-                const layout = layouts.find(l => l.default) || layouts[0];
+                let layouts = null;
+                if (this.props.sortPrintlayouts == 'asc')
+                {
+                    layouts = this.props.theme.print.filter(l => l.map && !l.name.startsWith(this.props.hidePrintlayoutPrefix)).sort((a, b) => {
+                        return a.name.localeCompare(b.name, undefined, {numeric: true});
+                    });
+                }
+                else
+                {
+                    layouts = this.props.theme.print.filter(l => l.map && !l.name.startsWith(this.props.hidePrintlayoutPrefix)).sort((a, b) => {
+                        return b.name.localeCompare(a.name, undefined, {numeric: true});
+                    });
+                }
+                const layout = layouts.find(l => l.default || l.name == this.props.defaultPrintlayout) || layouts[0];
                 this.setState({layout: layout, atlasFeatures: []});
             } else {
                 this.setState({layout: null, atlasFeatures: []});
@@ -238,9 +256,19 @@ class Print extends React.Component {
         }, {});
 
         const extraOptions = Object.fromEntries((this.props.theme.extraPrintParameters || "").split("&").map(entry => entry.split("=")));
-        const layouts = this.props.theme.print.filter(l => l.map).sort((a, b) => {
-            return a.name.localeCompare(b.name, undefined, {numeric: true});
-        });
+        let layouts = null;
+        if (this.props.sortPrintlayouts == 'asc')
+        {
+            layouts = this.props.theme.print.filter(l => l.map).sort((a, b) => {
+                return a.name.localeCompare(b.name, undefined, {numeric: true});
+            });
+        }
+        else
+        {
+            layouts = this.props.theme.print.filter(l => l.map).sort((a, b) => {
+                return b.name.localeCompare(a.name, undefined, {numeric: true});
+            });
+        }
 
         const formatMap = {
             "application/pdf": "PDF",
@@ -261,7 +289,7 @@ class Print extends React.Component {
                             <td>{LocaleUtils.tr("print.layout")}</td>
                             <td>
                                 <select onChange={this.changeLayout} value={this.state.layout.name}>
-                                    {layouts.filter(l => l.map).map(item => {
+                                    {layouts.filter(l => l.map && !l.name.startsWith(this.props.hidePrintlayoutPrefix)).map(item => {
                                         return (
                                             <option key={item.name} value={item.name}>{item.name}</option>
                                         );
@@ -349,6 +377,9 @@ class Print extends React.Component {
                         ) : null}
                         {(labels || []).map(label => {
                             // Omit labels which start with __
+                            
+                            //console.log(this.state);
+                            
                             if (label.startsWith("__")) {
                                 return null;
                             }
